@@ -1,0 +1,126 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: ks-kafka
+  name: ks-kafka-headless
+spec:
+  ports:
+  - name: broker
+    port: 9092
+    protocol: TCP
+  selector:
+    app: ks-kafka
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ks-kafka
+spec:
+  podManagementPolicy: OrderedReady
+  replicas: 3
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: ks-kafka
+  serviceName: ks-kafka-headless
+  template:
+    metadata:
+      labels:
+        app: ks-kafka
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - ks-kafka
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+      containers:
+      - command:
+        - sh
+        - -exc
+        - |
+          export KAFKA_BROKER_ID=${HOSTNAME##*-} && \
+          export KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://${POD_NAME}.ks-kafka-headless:9092,EXTERNAL://${HOST_IP}:$((32400 + ${KAFKA_BROKER_ID})) && \
+          exec /etc/confluent/docker/run
+        env:
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: KAFKA_HEAP_OPTS
+          value: -Xms512M -Xmx512M
+        - name: KAFKA_ZOOKEEPER_CONNECT
+          value: zk-headless:2181
+        - name: KAFKA_LOG_DIRS
+          value: /opt/kafka/data-0/logs
+        - name: KAFKA_LISTENERS
+          value: PLAINTEXT://:9092,EXTERNAL://:9094
+        - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+          value: PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+        - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+          value: "3"
+        - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+          value: "false"
+        - name: KAFKA_DELETE_TOPIC_ENABLE
+          value: "true"
+        - name: KAFKA_CONFLUENT_SUPPORT_METRICS_ENABLE
+          value: "false"
+        - name: KAFKA_NUM_PARTITIONS
+          value: "3"
+        - name: DEFAULT_REPLICATION_FACTOR
+          value: "1"
+        - name: KAFKA_INTER_BROKER_LISTENER_NAME
+          value: "PLAINTEXT"
+        image: confluentinc/cp-kafka:5.5.0
+        imagePullPolicy: IfNotPresent
+        name: ks-kafka-broker
+        ports:
+        - containerPort: 9092
+          name: broker
+          protocol: TCP
+        - containerPort: 9094
+          name: ks-kafka-extern
+          protocol: TCP
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /opt/kafka/data-0
+          name: datadir-0
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      #NOTE the empty volume below!
+      #YOUR DATA WILL NOT SURVIVE REDEPLOYS!
+      # link your own PVCs if you wish
+      volumes:
+      - emptyDir: {}
+        name: datadir-0
+  updateStrategy:
+    type: RollingUpdate

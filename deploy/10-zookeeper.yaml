@@ -1,0 +1,113 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: zk-headless
+spec:
+  ports:
+  - port: 2888
+    name: peer
+  - port: 3888
+    name: leader-election
+  - port: 2181
+    name: client
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    app: zookeeper
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zk
+spec:
+  selector:
+    matchLabels:
+      app: zookeeper
+  serviceName: "zk-headless"
+  replicas: 3
+  updateStrategy:
+    type: RollingUpdate
+  podManagementPolicy: Parallel
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: zk
+        image: confluentinc/cp-zookeeper:5.5.0
+        command:
+        - bash
+        - -c
+        - |-
+          ZK_FIX_HOST_REGEX="s/${HOSTNAME}\.[^:]*:/0.0.0.0:/g"
+          ZOOKEEPER_SERVER_ID=$((${HOSTNAME##*-}+1)) \
+          ZOOKEEPER_SERVERS=`echo $ZOOKEEPER_SERVERS | sed -e "$ZK_FIX_HOST_REGEX"` \
+          /etc/confluent/docker/run
+        env:
+        - name: KAFKA_HEAP_OPTS
+          value: -Xms512M -Xmx512M
+        - name: ZOOKEEPER_AUTOPURGE_PURGE_INTERVAL
+          value: "24"
+        - name: ZOOKEEPER_AUTOPURGE_SNAP_RETAIN_COUNT
+          value: "3"
+        - name: ZOOKEEPER_CLIENT_PORT
+          value: "2181"
+        - name: ZOOKEEPER_INIT_LIMIT
+          value: "10"
+        - name: ZOOKEEPER_MAX_CLIENT_CNXNS
+          value: "512"
+        - name: ZOOKEEPER_SERVERS
+          value: zk-0.zk-headless:2888:3888;zk-1.zk-headless:2888:3888;zk-2.zk-headless:2888:3888
+        - name: ZOOKEEPER_SYNC_LIMIT
+          value: "5"
+        - name: ZOOKEEPER_TICK_TIME
+          value: "2000"
+        - name: ZOOKEEPER_SERVER_ID
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: KAFKA_OPTS
+          value: "-Dzookeeper.4lw.commands.whitelist=ruok"
+        - name: ZOOKEEPER_CONFLUENT_SUPPORT_METRICS_ENABLE
+          value: "false"
+        lifecycle:
+          preStop:
+            exec: 
+             command: ["sh", "-ce", "kill -s TERM 1; while $(kill -0 1 2>/dev/null); do sleep 1; done"]
+        ports:
+        - containerPort: 2181
+          name: client
+        - containerPort: 2888
+          name: peer
+        - containerPort: 3888
+          name: leader-election
+        resources:
+          requests:
+            cpu: 500m
+            memory: 256Mi
+          limits:
+            cpu: "1"
+            memory: 1Gi
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - '[ "imok" = "$(echo ruok | nc -w 1 -q 1 127.0.0.1 2181)" ]'
+        volumeMounts:
+        - name: config
+          mountPath: /etc/kafka
+        - name: data
+          mountPath: /var/lib/zookeeper
+      #NOTE the empty volumes below!
+      #YOUR DATA WILL NOT SURVIVE REDEPLOYS!
+      # link your own PVCs if you wish
+      volumes:
+      - name: config
+        emptyDir: {}
+      - name: data
+        emptyDir: {}

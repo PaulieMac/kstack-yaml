@@ -1,0 +1,49 @@
+#NOTE the use of node ports as the ingress mechanism. So you can really only run this once per cluster :(
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: ks-kafka-extern-0
+spec:
+  selector:
+    app: ks-kafka
+    statefulset.kubernetes.io/pod-name: ks-kafka-0
+  ports:
+  - protocol: TCP
+    targetPort: 9094
+    port: 9094
+    nodePort: 32400
+  type: NodePort
+  
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: ks-kafka-extern-1
+spec:
+  selector:
+    app: ks-kafka
+    statefulset.kubernetes.io/pod-name: ks-kafka-1
+  ports:
+  - protocol: TCP
+    targetPort: 9094
+    port: 9094
+    nodePort: 32401
+  type: NodePort
+  
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: ks-kafka-extern-2
+spec:
+  selector:
+    app: ks-kafka
+    statefulset.kubernetes.io/pod-name: ks-kafka-2
+  ports:
+  - protocol: TCP
+    targetPort: 9094
+    port: 9094
+    nodePort: 32402
+  type: NodePort
+---

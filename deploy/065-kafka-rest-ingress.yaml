@@ -1,0 +1,16 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ks-rest-extern
+  labels:
+    app: ks-rest
+spec:
+  rules:
+      #NOTE use your own uri! 
+    - host: ks-rest.your-domain.local
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: ks-rest
+              servicePort: 8082

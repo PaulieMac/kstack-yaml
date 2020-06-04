@@ -1,0 +1,15 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: kafdrop-ingress
+  labels:
+    app: kafdrop
+spec:
+  rules:
+      #NOTE use your own uri! 
+  - host: kafdrop.your-domain.local
+    http:
+      paths:  
+      - backend:
+          serviceName: kafdrop
+          servicePort: 9000

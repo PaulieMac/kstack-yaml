@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: kafdrop
+  name: kafdrop
+spec:
+  externalTrafficPolicy: Cluster
+  ports:
+  - name: web
+    port: 9000
+    protocol: TCP
+    targetPort: 9000
+  selector:
+    app: kafdrop
+  sessionAffinity: None
+  type: NodePort
+  
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: kafdrop
+  name: kafdrop
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: kafdrop
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: kafdrop
+    spec:
+      containers:
+      - env:
+        - name: KAFKA_BROKERCONNECT
+          value: PLAINTEXT://ks-kafka-headless:9092
+        - name: SCHEMAREGISTRY_CONNECT
+          value: http://schema-reg:8081
+        image: obsidiandynamics/kafdrop:3.26.0
+        imagePullPolicy: IfNotPresent
+        name: kafdrop
+        ports:
+        - containerPort: 9000
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 50m
+            memory: 512Mi
+          limits:
+            memory: 1Gi
+            cpu: 1
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
