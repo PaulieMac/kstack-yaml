@@ -10,10 +10,14 @@ See https://github.com/PaulieMac/kstack-yaml/search?q=NOTE&unscoped_q=NOTE for a
 
 To run:
 ```
+git clone https://github.com/PaulieMac/kstack-yaml.git
+
+cd ./kstack-yaml/deploy
+
 FILES=`ls *.yaml | sort -g`;
 for yaml in $FILES
 do
   	echo "Applying $yaml"
-	kubectl apply -f $yaml --namespace=$nsp
+	kubectl apply -f $yaml --namespace=mynamespace
 done
 ```
