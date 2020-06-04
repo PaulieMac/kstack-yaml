@@ -7,9 +7,6 @@ Quick and simple yaml for kafka on kuberenetes, suitable for evaluation or POC p
 
 See https://github.com/PaulieMac/kstack-yaml/search?q=NOTE&unscoped_q=NOTE for anything noteworthy
 
-~make sure you change the URIs in the ingress files~
-
-
 
 To run:
 ```
