@@ -8,7 +8,7 @@ Quick and simple yaml for kafka on kuberenetes, suitable for evaluation or POC p
 See https://github.com/PaulieMac/kstack-yaml/search?q=NOTE&unscoped_q=NOTE for anything noteworthy
 
 
-To run:
+Pseudocode to run:
 ```
 git clone https://github.com/PaulieMac/kstack-yaml.git
 
