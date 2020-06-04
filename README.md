@@ -6,3 +6,15 @@ Quick and simple yaml for kafka on kuberenetes, suitable for evaluation or POC p
 
 
 See https://github.com/PaulieMac/kstack-yaml/search?q=NOTE&unscoped_q=NOTE for anything noteworthy
+
+
+
+To run:
+```
+FILES=`ls *.yaml | sort -g`;
+for yaml in $FILES
+do
+  	echo "Applying $yaml"
+	kubectl apply -f $yaml --namespace=$nsp
+done
+```
